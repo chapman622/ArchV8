@@ -920,7 +920,7 @@ if (numStr === "") numStr = "0";
       if (!storedWinX || !storedWinY) { out.textContent = "Locate window first."; return; }
       const absX = storedWinX, absY = storedWinY;
       out.textContent = "Scanning " + label + "...";
-      alt1.overLayRect(A1lib.mixColor(255,200,0), absX, absY, storedWinWidth, storedWinHeight, 5000, 2);
+     // alt1.overLayRect(A1lib.mixColor(255,200,0), absX, absY, storedWinWidth, storedWinHeight, 5000, 2);
       const results = {};
       let good = 0;
       const rowDefs = [{slots:10},{slots:5},{slots:5},{slots:5},{slots:5},{slots:5},{slots:5}];
@@ -933,7 +933,7 @@ if (numStr === "") numStr = "0";
         const rowEnd = storageIdx + row.slots - 1;
         const rowOverlaps = (rowEnd >= startIdx && rowStart <= endIdx);
         if (rowOverlaps) {
-          alt1.overLayRect(A1lib.mixColor(255,255,0), absX + offsetX, numY - 4, rowW, 18, 4000, 1);
+         // alt1.overLayRect(A1lib.mixColor(255,255,0), absX + offsetX, numY - 4, rowW, 18, 4000, 1);
         }
         for (let slot = 0; slot < row.slots; slot++) {
           const idx = storageIdx + slot;
