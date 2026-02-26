@@ -817,7 +817,7 @@
         if (r > 140 && g > 80 && b < 140 && r > g + 5) brightCount++;
       }
       if (brightCount > 20) {
-        const est = Math.max(1, Math.round(brightCount / 22));
+        const est = Math.max(1, Math.round(brightCount / 20));
         console.log(`No segments but fallback: bright=${brightCount} → ${est}`);
         return est;
       }
@@ -826,20 +826,16 @@
 
     let numStr = "";
 for (const seg of segments) {
-  let remainingWidth = seg.width;
-  let currentPos = seg.start;
+  let pos = seg.start;
+  let remaining = seg.width;
 
-  while (remainingWidth > 0) {
-    // Estimate digit width: 5–9 px typical, adjust based on remaining
-    let digitWidth = Math.min(remainingWidth, 8); // max 8 px per digit attempt
+  while (remaining > 0) {
+    // Try 6–9 px chunks (typical digit width + gap)
+    let chunkWidth = Math.min(remaining, Math.max(5, Math.floor(remaining / 2) + 1));
 
-    if (remainingWidth <= 10) {
-      digitWidth = remainingWidth; // last piece
-    }
-
-    // Build profile for this sub-segment
+    // Build profile for chunk
     const profile = [];
-    for (let px = currentPos; px < currentPos + digitWidth; px++) {
+    for (let px = pos; px < pos + chunkWidth; px++) {
       let count = 0;
       for (let py = 0; py < h; py++) {
         const i = (py * w + px) * 4;
@@ -850,14 +846,14 @@ for (const seg of segments) {
     }
 
     const subTotal = profile.reduce((a,b)=>a+b,0);
-    const sw = digitWidth;
+    const sw = chunkWidth;
     const density = subTotal / (sw * h);
     const midStart = Math.floor(sw * 0.25);
     const midEnd = Math.ceil(sw * 0.75);
     const midCount = profile.slice(midStart, midEnd).reduce((a,b)=>a+b,0);
     const midDensity = midCount / ((midEnd - midStart) * h || 1);
 
-    let digit = "1"; // default
+    let digit = "1";
 
     if (sw <= 5) {
       digit = "1";
@@ -883,14 +879,15 @@ for (const seg of segments) {
 
     numStr += digit;
 
-    // Move forward
-    currentPos += digitWidth;
-    remainingWidth -= digitWidth;
+    console.log(`  Chunk ${pos-chunkWidth}..${pos-1} w=${chunkWidth} dens=${density.toFixed(3)} → ${digit}`);
 
-    // Small step forward to skip gaps
-    if (remainingWidth > 0 && remainingWidth < 5) {
-      currentPos += remainingWidth;
-      remainingWidth = 0;
+    pos += chunkWidth;
+    remaining -= chunkWidth;
+
+    // Skip tiny leftover gaps
+    if (remaining > 0 && remaining < 5) {
+      pos += remaining;
+      remaining = 0;
     }
   }
 }
@@ -907,7 +904,7 @@ for (const seg of segments) {
       if (r > 140 && g > 80 && b < 140 && r > g + 5) brightCount++;
     }
     if (brightCount > 20) {
-      const est = Math.max(1, Math.round(brightCount / 22));
+      const est = Math.max(1, Math.round(brightCount / 20));
       console.log(`Classification failed, fallback: bright=${brightCount} → ${est}`);
       return est;
     }
