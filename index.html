@@ -760,6 +760,16 @@
   try {
     const W = 100, H = 40;
     const cap = A1lib.capture(x - 25, y - 35, W, H);
+
+    if (cap && cap.data) {
+      console.log("Capture success - size:", cap.width, cap.height);
+      // Log first pixel RGBA (top-left corner)
+      console.log("First pixel RGBA:", cap.data[0], cap.data[1], cap.data[2], cap.data[3]);
+      // Optional: log a few more pixels if you want
+      console.log("Pixel at center-ish:", cap.data[Math.floor(cap.data.length / 2)]);
+    } else {
+      console.log("Capture failed - no data");
+    }
     if (!cap || !cap.data) return null;
 
     const data = cap.data;
