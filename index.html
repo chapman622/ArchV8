@@ -944,7 +944,7 @@ for (const seg of segments) {
               const numX = absX + offsetX + (slot * horizStep);
               // Use icon position + slightly larger height to catch full number overlay
               alt1.overLayRect(A1lib.mixColor(0,255,0), numX -2, numY -4, iconSize 10, iconSize + 20, 8000, 2);
-              const num = readNumberAt(numX + 28, numY + 10);
+              const num = readNumberAt(numX + iconSize / 2, numY + iconSize / 2 - 10);
               console.log(`${mat.padEnd(25)} | x=${numX}, y=${numY} | result=${num ?? 'null'}`);
               if (num !== null) { results[mat] = num; good++; }
               await new Promise(r => setTimeout(r, 100));
