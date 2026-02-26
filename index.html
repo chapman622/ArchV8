@@ -758,11 +758,14 @@
 
     function readNumberAt(x, y) {
   try {
-    const W = 44, H = 12;
-    const cap = A1lib.capture(x, y - 10, W, H);
+    const W = 60, H = 20;               // wider and taller
+    const cap = A1lib.capture(x - 8, y - 18, W, H);  // shift left/up a bit to center better
+  
     if (!cap || !cap.data) return null;
     const data = cap.data;
     const w = cap.width, h = cap.height;
+
+     console.log(`Captured ${w}x${h} at (${x},${y-18})`);
 
     // Find columns that have gold/yellow pixels (RS3 number colour)
     const cols = [];
@@ -772,7 +775,7 @@
         const i = (py * w + px) * 4;
         const r = data[i], g = data[i+1], b = data[i+2];
         // Gold text: high red, medium-high green, low blue
-        if (r > 180 && g > 120 && b < 100 && r > g + 20) {
+        if (r > 160 && g > 100 && b < 120 && r > g + 10) {  // lower red/green, allow higher blue
           hasGold = true;
           break;
         }
@@ -792,7 +795,20 @@
     }
     if (inSeg) segments.push({start: segStart, width: w - segStart});
 
+    console.log(`Segments found: ${segments.length}, widths: ${segments.map(s => s.width).join(', ')}`);
+
     if (!segments.length) return 0;
+
+    // Quick bright pixel fallback if no segments found
+let brightCount = 0;
+for (let i = 0; i < data.length; i += 4) {
+  const r = data[i], g = data[i+1], b = data[i+2];
+  if (r > 160 && g > 100 && b < 120 && r > g + 10) brightCount++;
+}
+if (brightCount > 15) {  // adjust threshold based on your captures
+  console.log(`Fallback brightCount: ${brightCount} → returning 1`);
+  return 1;  // or estimate like Math.round(brightCount / 40) or similar
+}
 
     // For each segment, extract pixel pattern and classify digit
     let numStr = "";
