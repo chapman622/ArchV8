@@ -758,8 +758,8 @@
 
     function readNumberAt(x, y) {
   try {
-    const W = 100, H = 40;
-    const cap = A1lib.capture(x - 25, y - 35, W, H);
+    const W = 80, H = 35;
+    const cap = A1lib.capture(x + 20, y + 10, W, H);
 
     if (cap && cap.data) {
       console.log("Capture success - size:", cap.width, cap.height);
@@ -953,7 +953,7 @@ if (numStr === '') numStr = '0';
               const numX = absX + offsetX + (slot * horizStep);
               // Use icon position + slightly larger height to catch full number overlay
               alt1.overLayRect(A1lib.mixColor(0,255,0), numX - 4, numY - 6, iconSize + 12, 22, 8000, 2);
-              const num = readNumberAt(numX + iconSize / 2, numY + iconSize / 2 - 12);
+              const num = readNumberAt(numX + 35, numY + 20);  // ~35 px right, ~20 px down from icon top-left
               console.log(`${mat.padEnd(25)} | x=${numX}, y=${numY} | result=${num ?? 'null'}`);
               if (num !== null) { results[mat] = num; good++; }
               await new Promise(r => setTimeout(r, 100));
