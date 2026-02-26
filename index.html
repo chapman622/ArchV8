@@ -757,130 +757,108 @@
     document.getElementById("t-preview-bot").addEventListener("click", () => previewBoxes(20, 39, offsetY2));
 
     function readNumberAt(x, y) {
-      try {
-        console.log("OCR available?", !!OCR, "smallChars loaded?", !!OCR?.smallChars);
+  try {
+    const W = 44, H = 12;
+    const cap = A1lib.capture(x, y - 10, W, H);
+    if (!cap || !cap.data) return null;
+    const data = cap.data;
+    const w = cap.width, h = cap.height;
 
-        const captureW = 96, captureH = 84;
-        const cap = A1lib.capture(x - 32, y - 42, captureW, captureH);
-        if (!cap || !cap.data) return null;
-
-        // Very broad RS3 gold palette
-        const colors = [
-          [255,255,255],[255,250,240],[255,245,220],[255,240,200],
-          [255,235,180],[255,230,160],[255,225,140],[255,220,120],
-          [255,215,100],[255,210,80],[255,205,60],[255,200,40],
-          [255,199,0],[255,215,0],[255,225,50],[255,235,100],
-          [245,195,0],[240,190,0],[235,185,0],[230,180,0],
-          [255,220,80],[255,210,60],[255,200,40],[255,190,20],
-          [220,180,60],[210,170,50],[200,160,40],[190,150,30],
-          [230,190,70],[220,180,60],[210,170,50],[200,160,40],
-          [240,200,90],[230,190,80],[220,180,70],[210,170,60],
-          [245,225,130],[240,215,110],[235,205,90],[230,195,80],
-          [225,185,70],[220,175,60],[215,165,50],[210,155,40],
-          [180,140,30],[170,130,20],[160,120,10],[150,110,5],
-          [190,150,40],[180,140,30],[170,130,20],[160,120,10]
-        ];
-
-        let text = "";
-        if (OCR && OCR.readSmallChars && OCR.smallChars) {
-          try {
-            const r = OCR.readSmallChars(cap, OCR.smallChars, colors);
-            if (r && r.text) {
-              text = r.text;
-              console.log("smallChars read:", text);
-            }
-          } catch (e) {
-            console.log("smallChars error:", e);
-          }
+    // Find columns that have gold/yellow pixels (RS3 number colour)
+    const cols = [];
+    for (let px = 0; px < w; px++) {
+      let hasGold = false;
+      for (let py = 0; py < h; py++) {
+        const i = (py * w + px) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        // Gold text: high red, medium-high green, low blue
+        if (r > 180 && g > 120 && b < 100 && r > g + 20) {
+          hasGold = true;
+          break;
         }
-        if (!text && OCR && OCR.readLine && OCR.smallChars) {
-          try {
-            const r = OCR.readLine(cap, OCR.smallChars, colors);
-            if (r && r.text) {
-              text = r.text;
-              console.log("readLine read:", text);
-            }
-          } catch (e) {
-            console.log("readLine error:", e);
-          }
-        }
-        if (text) {
-          const cleaned = text.replace(/[^0-9]/g, "");
-          const n = parseInt(cleaned);
-          if (!isNaN(n)) {
-            console.log("Parsed number:", n, "from raw:", text);
-            return n;
-          } else {
-            console.log("Failed to parse:", text);
-          }
-        }
-
-        // Pixel fallback - wider crop
-        let brightCount = 0;
-        const data = cap.data;
-        const w = cap.width, h = cap.height;
-        for (let py = Math.floor(h * 0.2); py < Math.floor(h * 0.8); py++) {
-          for (let px = Math.floor(w * 0.2); px < Math.floor(w * 0.8); px++) {
-            const i = (py * w + px) * 4;
-            const rv = data[i], gv = data[i+1], bv = data[i+2];
-            if (rv > 140 && gv > 100 && bv > 10 && rv > gv + 15 && gv > bv + 10) brightCount++;
-          }
-        }
-        console.log(`Bright count at (${x}, ${y}): ${brightCount}`);
-
-        if (brightCount > 4) {
-          const estimate = Math.round(brightCount * 9 + 300);
-          console.log(`Estimating non-zero: ${estimate} (from ${brightCount} pixels)`);
-          return estimate;
-        }
-        if (brightCount > 1) return 0;
-        return null;
-      } catch (e) {
-        console.log("OCR error at", x, y, ":", e);
-        return null;
       }
+      cols.push(hasGold);
     }
 
-    async function performScan(startIdx, endIdx, label, useOffsetY) {
-      const out = document.getElementById("ocr-out");
-      if (!storedWinX || !storedWinY) { out.textContent = "Locate window first."; return; }
-      const absX = storedWinX, absY = storedWinY;
-      out.textContent = "Scanning " + label + "...";
-      alt1.overLayRect(A1lib.mixColor(255,200,0), absX, absY, storedWinWidth, storedWinHeight, 5000, 2);
-      const results = {};
-      let good = 0;
-      const rowDefs = [{slots:10},{slots:5},{slots:5},{slots:5},{slots:5},{slots:5},{slots:5}];
-      let storageIdx = 0;
-      for (let rowIdx = 0; rowIdx < rowDefs.length; rowIdx++) {
-        const row = rowDefs[rowIdx];
-        const numY = absY + useOffsetY + (rowIdx * rowStep);
-        const rowW = row.slots * horizStep;
-        const rowStart = storageIdx;
-        const rowEnd = storageIdx + row.slots - 1;
-        const rowOverlaps = (rowEnd >= startIdx && rowStart <= endIdx);
-        if (rowOverlaps) {
-          alt1.overLayRect(A1lib.mixColor(255,255,0), absX + offsetX, numY - 4, rowW, 18, 4000, 1);
-        }
-        for (let slot = 0; slot < row.slots; slot++) {
-          const idx = storageIdx + slot;
-          if (idx >= startIdx && idx <= endIdx) {
-            const mat = STORAGE_ORDER[idx];
-            if (mat) {
-              const numX = absX + offsetX + (slot * horizStep);
-              alt1.overLayRect(A1lib.mixColor(0,255,0), numX, numY - 4, iconSize, 18, 4000, 1);
-              const num = readNumberAt(numX + (iconSize / 2), numY);  // nudged read point
-              if (num !== null) { results[mat] = num; good++; }
-              await new Promise(r => setTimeout(r, 100));
-            }
-          }
-        }
-        storageIdx += row.slots;
+    // Group consecutive gold columns into segments (digits)
+    const segments = [];
+    let inSeg = false, segStart = 0;
+    for (let px = 0; px < w; px++) {
+      if (cols[px] && !inSeg) { inSeg = true; segStart = px; }
+      else if (!cols[px] && inSeg) { 
+        segments.push({start: segStart, width: px - segStart});
+        inSeg = false; 
       }
-      alt1.overLayRefreshGroup("0");
-      Object.assign(ocrParsed, results);
-      showOCRRes(ocrParsed);
-      out.textContent = "Added " + good + " from " + label + ". Total detected: " + Object.keys(ocrParsed).length + ". Apply when ready.";
     }
+    if (inSeg) segments.push({start: segStart, width: w - segStart});
+
+    if (!segments.length) return 0;
+
+    // For each segment, extract pixel pattern and classify digit
+    let numStr = "";
+    for (const seg of segments) {
+      if (seg.width < 2) continue; // skip noise
+      
+      // Build column density profile for this segment
+      const profile = [];
+      for (let px = seg.start; px < seg.start + seg.width; px++) {
+        let count = 0;
+        for (let py = 0; py < h; py++) {
+          const i = (py * w + px) * 4;
+          const r = data[i], g = data[i+1], b = data[i+2];
+          if (r > 180 && g > 120 && b < 100 && r > g + 20) count++;
+        }
+        profile.push(count);
+      }
+      
+      const totalPx = profile.reduce((a,b) => a+b, 0);
+      const sw = seg.width;
+      const density = totalPx / (sw * h);
+      const midDensity = profile.slice(Math.floor(sw*0.3), Math.ceil(sw*0.7))
+        .reduce((a,b)=>a+b,0) / (Math.max(1, Math.ceil(sw*0.4)) * h);
+      const leftDensity = profile.slice(0, Math.ceil(sw/2)).reduce((a,b)=>a+b,0);
+      const rightDensity = profile.slice(Math.floor(sw/2)).reduce((a,b)=>a+b,0);
+
+      // Comma separator - very narrow, skip it
+      if (sw <= 3) { continue; }
+
+      // Classify by width and density patterns
+      let digit = "?";
+      if (sw <= 5) {
+        // Narrow digits: 1
+        digit = "1";
+      } else if (midDensity < 0.15) {
+        // Hollow middle: 0
+        digit = "0";
+      } else if (density > 0.55) {
+        // Very dense: 8
+        digit = "8";
+      } else if (leftDensity > rightDensity * 1.4) {
+        digit = "4";
+      } else if (rightDensity > leftDensity * 1.3) {
+        digit = "7";
+      } else if (density > 0.38) {
+        digit = "6";
+      } else if (density > 0.30) {
+        digit = "9";
+      } else if (midDensity > 0.25) {
+        digit = "3";
+      } else if (leftDensity > rightDensity) {
+        digit = "5";
+      } else {
+        digit = "2";
+      }
+      numStr += digit;
+    }
+
+    const n = parseInt(numStr);
+    console.log(`readNumberAt(${x},${y}): segments=${segments.length} str="${numStr}" n=${n}`);
+    return isNaN(n) ? null : n;
+  } catch(e) {
+    console.log("readNumberAt error:", e);
+    return null;
+  }
+}
 
     function scanTop() { performScan(0, 19, "Top (Agnostic + Armadylean + Bandosian)", offsetY); }
     function scanBottom() { performScan(20, 39, "Bottom (Dragonkin + Saradominist + Zamorakian + Zarosian)", offsetY2); }
