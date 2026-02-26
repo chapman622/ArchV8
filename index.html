@@ -744,7 +744,7 @@
           const iconX = absX + offsetX + (slot * horizStep);
           alt1.overLayRect(A1lib.mixColor(80,180,255), iconX, iconTop, iconSize, iconSize + 14, 8000, 2);
           if (idx >= startIdx && idx <= endIdx) {
-            alt1.overLayRect(A1lib.mixColor(0,255,0), iconX, numY - 4, iconSize, 18, 8000, 2);
+            alt1.overLayRect(A1lib.mixColor(0,255,0), iconX -2, numY - 4, iconSize, +4, 18, 8000, 2);
           }
         }
         storageIdx += row.slots;
@@ -942,7 +942,8 @@ for (const seg of segments) {
             const mat = STORAGE_ORDER[idx];
             if (mat) {
               const numX = absX + offsetX + (slot * horizStep);
-              alt1.overLayRect(A1lib.mixColor(0,255,0), numX, numY - 2, iconSize, 14, 8000, 2);
+              // Use icon position + slightly larger height to catch full number overlay
+alt1.overLayRect(A1lib.mixColor(0,255,0), iconX, iconTop, iconSize + 10, iconSize + 20, 8000, 2);;
               const num = readNumberAt(numX + 28, numY + 10);
               console.log(`${mat.padEnd(25)} | x=${numX}, y=${numY} | result=${num ?? 'null'}`);
               if (num !== null) { results[mat] = num; good++; }
