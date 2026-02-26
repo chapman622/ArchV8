@@ -817,7 +817,7 @@
         if (r > 140 && g > 80 && b < 140 && r > g + 5) brightCount++;
       }
       if (brightCount > 20) {
-        const est = Math.max(1, Math.round(brightCount / 24));
+        const est = Math.max(1, Math.round(brightCount / 22));
         console.log(`No segments but fallback: bright=${brightCount} → ${est}`);
         return est;
       }
@@ -826,50 +826,73 @@
 
     let numStr = "";
 for (const seg of segments) {
-  const profile = [];
-  for (let px = seg.start; px < seg.start + seg.width; px++) {
-    let count = 0;
-    for (let py = 0; py < h; py++) {
-      const i = (py * w + px) * 4;
-      const r = data[i], g = data[i+1], b = data[i+2];
-      if (r > 140 && g > 80 && b < 140 && r > g + 5) count++;
+  let remainingWidth = seg.width;
+  let currentPos = seg.start;
+
+  while (remainingWidth > 0) {
+    // Estimate digit width: 5–9 px typical, adjust based on remaining
+    let digitWidth = Math.min(remainingWidth, 8); // max 8 px per digit attempt
+
+    if (remainingWidth <= 10) {
+      digitWidth = remainingWidth; // last piece
     }
-    profile.push(count);
+
+    // Build profile for this sub-segment
+    const profile = [];
+    for (let px = currentPos; px < currentPos + digitWidth; px++) {
+      let count = 0;
+      for (let py = 0; py < h; py++) {
+        const i = (py * w + px) * 4;
+        const r = data[i], g = data[i+1], b = data[i+2];
+        if (r > 140 && g > 80 && b < 140 && r > g + 5) count++;
+      }
+      profile.push(count);
+    }
+
+    const subTotal = profile.reduce((a,b)=>a+b,0);
+    const sw = digitWidth;
+    const density = subTotal / (sw * h);
+    const midStart = Math.floor(sw * 0.25);
+    const midEnd = Math.ceil(sw * 0.75);
+    const midCount = profile.slice(midStart, midEnd).reduce((a,b)=>a+b,0);
+    const midDensity = midCount / ((midEnd - midStart) * h || 1);
+
+    let digit = "1"; // default
+
+    if (sw <= 5) {
+      digit = "1";
+    } else if (sw < 9 && density < 0.18) {
+      digit = "0";
+    } else if (density > 0.52) {
+      digit = "8";
+    } else if (profile[0] > profile[Math.floor(sw/2)] * 2.0 && profile[0] > profile[sw-1] * 1.6) {
+      digit = "4";
+    } else if (profile[sw-1] > profile[Math.floor(sw/2)] * 2.0) {
+      digit = "7";
+    } else if (density > 0.42) {
+      digit = "6";
+    } else if (density > 0.36) {
+      digit = "9";
+    } else if (midDensity > 0.32) {
+      digit = "3";
+    } else if (density > 0.28) {
+      digit = "5";
+    } else if (density > 0.22) {
+      digit = "2";
+    }
+
+    numStr += digit;
+
+    // Move forward
+    currentPos += digitWidth;
+    remainingWidth -= digitWidth;
+
+    // Small step forward to skip gaps
+    if (remainingWidth > 0 && remainingWidth < 5) {
+      currentPos += remainingWidth;
+      remainingWidth = 0;
+    }
   }
-
-  const totalPx = profile.reduce((a,b)=>a+b,0);
-  const sw = seg.width;
-  const density = totalPx / (sw * h);
-  const midStart = Math.floor(sw * 0.25);
-  const midEnd = Math.ceil(sw * 0.75);
-  const midCount = profile.slice(midStart, midEnd).reduce((a,b)=>a+b,0);
-  const midDensity = midCount / ((midEnd - midStart) * h || 1);
-
-  let digit = "1"; // safe default
-
-  if (sw <= 6) {
-    digit = "1";
-  } else if (sw < 12 && density < 0.18) {
-    digit = "0"; // only narrow + very empty = 0
-  } else if (density > 0.52) {
-    digit = "8";
-  } else if (profile[0] > profile[Math.floor(sw/2)] * 2.0 && profile[0] > profile[sw-1] * 1.6) {
-    digit = "4";
-  } else if (profile[sw-1] > profile[Math.floor(sw/2)] * 2.0) {
-    digit = "7";
-  } else if (density > 0.42) {
-    digit = "6";
-  } else if (density > 0.36) {
-    digit = "9";
-  } else if (midDensity > 0.32) {
-    digit = "3";
-  } else if (density > 0.28) {
-    digit = "5";
-  } else if (density > 0.22) {
-    digit = "2";
-  }
-
-  numStr += digit;
 }
 
     const n = parseInt(numStr);
@@ -884,7 +907,7 @@ for (const seg of segments) {
       if (r > 140 && g > 80 && b < 140 && r > g + 5) brightCount++;
     }
     if (brightCount > 20) {
-      const est = Math.max(1, Math.round(brightCount / 24));
+      const est = Math.max(1, Math.round(brightCount / 22));
       console.log(`Classification failed, fallback: bright=${brightCount} → ${est}`);
       return est;
     }
